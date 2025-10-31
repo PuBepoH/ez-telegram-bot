@@ -11,6 +11,12 @@ A simple Telegram bot that connects to the OpenAI API (ChatGPT) and returns mode
 
 ---
 
+## Requirements
+
+- Python 3.12+
+- A Telegram account with a created bot via @BotFather
+- An OpenAI API key from platform.openai.com
+
 ## 🚀 Quick Start
 
 ### 1. Clone the repository

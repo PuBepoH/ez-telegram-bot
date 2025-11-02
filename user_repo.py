@@ -13,6 +13,16 @@ WHERE tg_id = %s
 LIMIT 1;
 """
 
+SET_ROLE_SQL = """
+INSERT INTO bot.users (tg_id, role, username, first_name, last_name, is_active, last_seen_at)
+VALUES (%s, %s, NULL, NULL, NULL, TRUE, NOW())
+ON CONFLICT (tg_id) DO UPDATE
+SET
+    role = EXCLUDED.role,
+    is_active = TRUE,
+    last_seen_at = NOW();
+"""
+
 UPSERT_USER_SQL = """
 INSERT INTO bot.users (tg_id, role, username, first_name, last_name, last_seen_at)
 VALUES (%s, %s, %s, %s, %s, NOW())
@@ -36,7 +46,7 @@ class TelegramUserData:
 
 class UserRepo:
     def __init__(self):
-        pass
+        self.conn = psycopg.connect(POSTGRES_DSN, autocommit=True)
 
     def upsert_and_get_role(
         self,
@@ -71,12 +81,19 @@ class UserRepo:
 
     def set_role(self, tg_id: int, role: str) -> None:
         """
-        Set specific user role in db
+        Forcibly set a user's role (e.g. admin promotes someone to 'user').
+        Creates the user if missing.
         """
+        with psycopg.connect(POSTGRES_DSN, autocommit=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    SET_ROLE_SQL,
+                    (tg_id, role),
+                )
 
     def get_role(self, tg_id: int) -> Optional[str]:
         with psycopg.connect(POSTGRES_DSN) as conn:
             with conn.cursor() as cur:
                 cur.execute(GET_ROLE_SQL, (tg_id,))
                 row = cur.fetchone()
-                return row[0] if row else None
+                return cast(Optional[str], row[0] if row else None)

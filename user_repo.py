@@ -28,8 +28,8 @@ RETURNING role;
 
 @dataclass
 class TelegramUserData:
-    tg_id: Optional[int] = None
-    username: Optional[str] = None
+    tg_id: int
+    username: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
 

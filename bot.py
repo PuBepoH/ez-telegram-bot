@@ -1,3 +1,5 @@
+from typing import Dict
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -18,19 +20,51 @@ from config import (
 from db_init import init_db
 from user_repo import TelegramUserData, UserRepo
 
+telegram_users_by_tg_id: Dict[int, TelegramUserData] = {}
 user_repo = UserRepo()
-telegram_user = TelegramUserData()
 TELEGRAM_MSG_MAX_LEN = 4000  # Telegram has msg length limit for ~4096 symbols
 
 
-def user_role_allowed(role: str) -> bool:
+def get_or_create_telegram_user_info(update: Update) -> TelegramUserData:
+    """
+    Get TelegramUserData for this update
+    If there are not such user in memory - create and append to telegram_users_dict
+    """
+    effective_user = update.effective_user
+    tg_id = effective_user.id
+
+    # if user already presented in telegram_users_by_tg_id => update data and return
+    if tg_id in telegram_users_by_tg_id:
+        u = telegram_users_by_tg_id[tg_id]
+        # update dynamic fiels, ppl can change username, first name and last name
+        u.username = effective_user.username or f"user_{tg_id}"
+        u.first_name = effective_user.first_name
+        u.last_name = effective_user.last_name
+        return u
+
+    # if user is not presented in telegram_users_by_tg_id => create new record
+    new_user = TelegramUserData(
+        tg_id=tg_id,
+        username=effective_user.username or f"user_{tg_id}",
+        first_name=effective_user.first_name,
+        last_name=effective_user.last_name,
+    )
+    telegram_users_by_tg_id[tg_id] = new_user
+    return new_user
+
+
+def user_role_allowed(telegram_user: TelegramUserData) -> bool:
+    role = user_repo.upsert_and_get_role(
+        telegram_user,
+    )
+    logger.info("User %s have %s role", telegram_user.username, role)
     return role in ALLOWED_ROLES
 
 
 # ---------- function for communication with GPT ----------
 def ask_gpt(user_text_and_context: list[dict[str, str]]) -> str:
     """
-    send user text to OpenAI and return response
+    Send user text to OpenAI and return response
     """
     response = openai_client.chat.completions.create(
         model=OPENAI_MODEL,
@@ -47,35 +81,34 @@ def ask_gpt(user_text_and_context: list[dict[str, str]]) -> str:
 async def start_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     """
     /start handler
+    Welcome user and return his role in system
     """
-    await update.message.reply_text(
-        """
-        Hello, I'm ezBot! 
-        
-        I can send requests to ChatGPT and return responses.
-        """
+    telegram_user = get_or_create_telegram_user_info(update)
+    role = user_repo.upsert_and_get_role(telegram_user)
+
+    reply_text = (
+        "Hello, I'm ezBot!\n\n"
+        "I can send requests to ChatGPT and return responses.\n\n"
+        f"Your username is: {telegram_user.username}\n"
+        f"Your role is: {role}\n"
     )
+
+    await update.message.reply_text(reply_text)
 
 
 async def reset_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     """
     /reset handler
     """
-    telegram_user.tg_id = update.effective_user.id
-    telegram_user.username = (
-        update.effective_user.username or f"user_{telegram_user.tg_id}"
-    )
-    telegram_user.first_name = update.effective_user.first_name
-    telegram_user.last_name = update.effective_user.last_name
+    telegram_user = get_or_create_telegram_user_info(update)
 
     thread_id = 0
 
-    role = user_repo.upsert_and_get_role(
-        telegram_user,
-    )
-
-    if not user_role_allowed(role):
-        await update.message.reply_text("⛔ You have no access to this bot.")
+    if not user_role_allowed(telegram_user):
+        await update.message.reply_text("⛔ You have no access to /reset in this bot.")
+        logger.info(
+            "User %s was restricted from using /reset command.", telegram_user.username
+        )
         return
 
     history_store.reset_history(
@@ -104,23 +137,16 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     """
     forward default message to GPT and return response
     """
-    telegram_user.tg_id = update.effective_user.id
-    telegram_user.username = (
-        update.effective_user.username or f"user_{telegram_user.tg_id}"
-    )
-    telegram_user.first_name = update.effective_user.first_name
-    telegram_user.last_name = update.effective_user.last_name
+    telegram_user = get_or_create_telegram_user_info(update)
+    if not user_role_allowed(telegram_user):
+        await update.message.reply_text(
+            "⛔ You have no access to message ChatGPT in this bot."
+        )
+        return
+
     user_text = update.message.text
     logger.info("Got message from user %s", telegram_user.username)
     thread_id = 0
-
-    role = user_repo.upsert_and_get_role(
-        telegram_user,
-    )
-    logger.info("User %s have %s role", telegram_user.username, role)
-    if not user_role_allowed(role):
-        await update.message.reply_text("⛔ You have no access to this bot.")
-        return
 
     if not user_text or user_text.strip() == "":
         await update.message.reply_text(
@@ -168,6 +194,7 @@ def main():
 
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("reset", reset_command))
+    app.add_handler(CommandHandler("add", reset_command))
     # regular messages
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 

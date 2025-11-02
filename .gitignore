@@ -1,18 +1,30 @@
-# env
-.env
-
-# virtual environment
-.venv/
-venv/
-env/
-
-# python cache
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-*.pytest_cache/
-.pytest_cache/
 
-# VSCode specific
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# MyPy / Pytest / Coverage caches
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Pre-commit & tools
+.pre-commit/
+.cache/
+*.log
+
+# Editors
 .vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

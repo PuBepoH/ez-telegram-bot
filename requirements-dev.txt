@@ -1,0 +1,11 @@
+black==25.9.0
+isort==7.0.0
+pylint==4.0.2
+mypy==1.18.2
+bandit==1.8.6
+pre_commit==4.3.0
+
+types-redis==4.6.0.20241004
+types-cffi==1.17.0.20250915
+types-pyOpenSSL==24.1.0.20240722
+types-setuptools==80.9.0.20250822

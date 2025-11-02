@@ -41,7 +41,7 @@ class UserRepo:
     def upsert_and_get_role(
         self,
         user: TelegramUserData,
-        default_role: str = "user",
+        default_role: str = "guest",
     ) -> str:
         """
         Update/create user and return his role

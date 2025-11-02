@@ -8,7 +8,13 @@ from telegram.ext import (
 )
 
 import history_store
-from config import ALLOWED_ROLES, OPENAI_MODEL, TELEGRAM_BOT_TOKEN, openai_client
+from config import (
+    ALLOWED_ROLES,
+    OPENAI_MODEL,
+    TELEGRAM_BOT_TOKEN,
+    logger,
+    openai_client,
+)
 from db_init import init_db
 from user_repo import TelegramUserData, UserRepo
 
@@ -66,7 +72,6 @@ async def reset_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
     role = user_repo.upsert_and_get_role(
         telegram_user,
-        default_role="user",
     )
 
     if not user_role_allowed(role):
@@ -106,14 +111,13 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     telegram_user.first_name = update.effective_user.first_name
     telegram_user.last_name = update.effective_user.last_name
     user_text = update.message.text
-
+    logger.info("Got message from user %s", telegram_user.username)
     thread_id = 0
 
     role = user_repo.upsert_and_get_role(
         telegram_user,
-        default_role="user",
     )
-
+    logger.info("User %s have %s role", telegram_user.username, role)
     if not user_role_allowed(role):
         await update.message.reply_text("⛔ You have no access to this bot.")
         return

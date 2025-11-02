@@ -90,6 +90,7 @@ async def start_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
         "Hello, I'm ezBot!\n\n"
         "I can send requests to ChatGPT and return responses.\n\n"
         f"Your username is: {telegram_user.username}\n"
+        f"Your telegram_id is: {telegram_user.tg_id}\n"
         f"Your role is: {role}\n"
     )
 

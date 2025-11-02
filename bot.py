@@ -53,7 +53,7 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
 
     if not user_text or user_text.strip() == "":
-        await update.message.reply_test(
+        await update.message.reply_text(
             "Мне нужен текст запроса. Не могу отправить пустой"
         )
         return
@@ -81,7 +81,7 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
         "default",  # chatgpt_role
         thread_id,
         "assistant",  # speaker_role
-        user_text,
+        answer,
     )
 
     # send user response back

@@ -156,6 +156,7 @@ async def reset_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     telegram_user = get_or_create_telegram_user_info(update)
 
     thread_id = 0
+    chatgpt_role = "default"
 
     if not user_role_allowed(telegram_user):
         await update.message.reply_text("⛔ You have no access to /reset in this bot.")
@@ -166,24 +167,18 @@ async def reset_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
     history_store.reset_history(
         username=telegram_user.username,
-        chatgpt_role="default",
+        chatgpt_role=chatgpt_role,
         thread_id=0,
     )
 
-    await update.message.reply_text(
-        """
-        Your chat history for:
-
-        User = %s,
-        ChatGPT role = %s,
-        Thread_id = %s
-        
-        Has been deleted.
-        """,
-        telegram_user.username,
-        "default",
-        thread_id,
+    reply_text = (
+        "Your chat history has been deleted.\n\n"
+        f"User = {telegram_user.username}\n"
+        f"ChatGPT role = {chatgpt_role}\n"
+        f"Thread_id = {thread_id}\n"
     )
+
+    await update.message.reply_text(reply_text)
 
 
 async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
@@ -247,7 +242,7 @@ def main():
 
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("reset", reset_command))
-    app.add_handler(CommandHandler("add", reset_command))
+    app.add_handler(CommandHandler("add", add_command))
     # regular messages
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 

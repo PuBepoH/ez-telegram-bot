@@ -69,6 +69,11 @@ class UserRepo:
 
         return role_val
 
+    def set_role(self, tg_id: int, role: str) -> None:
+        """
+        Set specific user role in db
+        """
+
     def get_role(self, tg_id: int) -> Optional[str]:
         with psycopg.connect(POSTGRES_DSN) as conn:
             with conn.cursor() as cur:

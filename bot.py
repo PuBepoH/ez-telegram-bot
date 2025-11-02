@@ -8,9 +8,17 @@ from telegram.ext import (
 )
 
 import history_store
-from config import OPENAI_MODEL, TELEGRAM_BOT_TOKEN, openai_client
+from config import ALLOWED_ROLES, OPENAI_MODEL, TELEGRAM_BOT_TOKEN, openai_client
+from db_init import init_db
+from user_repo import TelegramUserData, UserRepo
 
+user_repo = UserRepo()
+telegram_user = TelegramUserData()
 TELEGRAM_MSG_MAX_LEN = 4000  # Telegram has msg length limit for ~4096 symbols
+
+
+def user_role_allowed(role: str) -> bool:
+    return role in ALLOWED_ROLES
 
 
 # ---------- function for communication with GPT ----------
@@ -37,8 +45,53 @@ async def start_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         """
         Hello, I'm ezBot! 
+        
         I can send requests to ChatGPT and return responses.
         """
+    )
+
+
+async def reset_command(update: Update, _context: ContextTypes.DEFAULT_TYPE):
+    """
+    /reset handler
+    """
+    telegram_user.tg_id = update.effective_user.id
+    telegram_user.username = (
+        update.effective_user.username or f"user_{telegram_user.tg_id}"
+    )
+    telegram_user.first_name = update.effective_user.first_name
+    telegram_user.last_name = update.effective_user.last_name
+
+    thread_id = 0
+
+    role = user_repo.upsert_and_get_role(
+        telegram_user,
+        default_role="user",
+    )
+
+    if not user_role_allowed(role):
+        await update.message.reply_text("⛔ You have no access to this bot.")
+        return
+
+    history_store.reset_history(
+        username=telegram_user.username,
+        chatgpt_role="default",
+        thread_id=0,
+    )
+
+    await update.message.reply_text(
+        """
+        Your chat history for:
+
+        User = %s,
+        ChatGPT role = %s,
+        Thread_id = %s
+        
+        Has been deleted.
+        """,
+        telegram_user.username,
+        "default",
+        thread_id,
     )
 
 
@@ -46,11 +99,24 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     """
     forward default message to GPT and return response
     """
-    user = update.effective_user
-
-    username = user.username or f"user_{user.id}"
-    thread_id = 0
+    telegram_user.tg_id = update.effective_user.id
+    telegram_user.username = (
+        update.effective_user.username or f"user_{telegram_user.tg_id}"
+    )
+    telegram_user.first_name = update.effective_user.first_name
+    telegram_user.last_name = update.effective_user.last_name
     user_text = update.message.text
+
+    thread_id = 0
+
+    role = user_repo.upsert_and_get_role(
+        telegram_user,
+        default_role="user",
+    )
+
+    if not user_role_allowed(role):
+        await update.message.reply_text("⛔ You have no access to this bot.")
+        return
 
     if not user_text or user_text.strip() == "":
         await update.message.reply_text(
@@ -60,7 +126,7 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
     # add user input to chat history
     history_store.append_message(
-        username,
+        telegram_user.username,
         "default",  # chatgpt_role
         thread_id,
         "user",  # speaker_role
@@ -69,7 +135,7 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
     # get chat history + user input
     user_text_and_context = history_store.get_recent_history(
-        username, chatgpt_role="default", thread_id=0
+        telegram_user.username, chatgpt_role="default", thread_id=0
     )
 
     # call OpenAI model
@@ -77,7 +143,7 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
     # add OpenAI answer to chat history
     history_store.append_message(
-        username,
+        telegram_user.username,
         "default",  # chatgpt_role
         thread_id,
         "assistant",  # speaker_role
@@ -91,11 +157,13 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    # database init
+    init_db()
+
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
-    # /start
     app.add_handler(CommandHandler("start", start_command))
-
+    app.add_handler(CommandHandler("reset", reset_command))
     # regular messages
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 

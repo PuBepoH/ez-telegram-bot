@@ -34,6 +34,10 @@ load_dotenv()
 sanitize_proxy_env()
 
 # read config values
+ADMIN_USER_ID = os.getenv("ADMIN_USER_ID", "161638965")
+POSTGRES_DSN = os.getenv(
+    "POSTGRES_DSN", "postgresql://postgres:postgres@localhost:5432/bot"
+)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
@@ -41,6 +45,10 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CHAT_MAX_HISTORY_MESSAGES = int(os.getenv("CHAT_MAX_HISTORY_MESSAGES", "10"))
 CHAT_MAX_STORED_MESSAGES = int(os.getenv("CHAT_MAX_STORED_MESSAGES", "200"))
 CHAT_TTL_SECONDS = int(os.getenv("CHAT_TTL_SECONDS", str(30 * 24 * 60 * 60)))
+
+# constants
+ALLOWED_ROLES = ("admin", "user")
+MAINTENANCE_DB_NAME = "postgres"
 
 # init clients
 openai_client = OpenAI(api_key=OPENAI_API_KEY)

@@ -1,12 +1,14 @@
 import json
 from typing import Dict, List
 
-from chatgpt_role_prompts import CHATGPT_ROLE_PROMPTS
-from config import (
-    CHAT_MAX_HISTORY_MESSAGES,
-    CHAT_MAX_STORED_MESSAGES,
-    CHAT_TTL_SECONDS,
-    redis_client,
+import redis
+
+from app.chatgpt_role_prompts import CHATGPT_ROLE_PROMPTS
+from app.config import settings
+
+redis_client = redis.Redis.from_url(
+    settings.redis_url,
+    decode_responses=True,
 )
 
 
@@ -31,10 +33,10 @@ def append_message(
     redis_client.rpush(key, entry)
 
     # trim to keep only maximum msg or less
-    redis_client.ltrim(key, -CHAT_MAX_STORED_MESSAGES, -1)
+    redis_client.ltrim(key, -settings.chat_max_stored_messages, -1)
 
     # update TTL
-    redis_client.expire(key, CHAT_TTL_SECONDS)
+    redis_client.expire(key, settings.chat_ttl_seconds)
 
 
 def get_recent_history(
@@ -45,7 +47,7 @@ def get_recent_history(
     in OpenAI-ready format. Guaranteed that system msg will be returned first
     """
     key = _key(username, chatgpt_role, thread_id)
-    raw_items = redis_client.lrange(key, -CHAT_MAX_HISTORY_MESSAGES, -1)
+    raw_items = redis_client.lrange(key, -settings.chat_max_history_messages, -1)
     messages = [json.loads(item) for item in raw_items]
 
     # check for system msg

@@ -2,8 +2,8 @@ import json
 from typing import Dict, List
 
 import redis
-from chatgpt_role_prompts import CHATGPT_ROLE_PROMPTS
 
+from app.chatgpt_role_prompts import CHATGPT_ROLE_PROMPTS
 from app.config import settings
 
 redis_client = redis.Redis.from_url(

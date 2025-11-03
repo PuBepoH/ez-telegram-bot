@@ -1,53 +1,79 @@
 # ez-telegram-bot
 
-A simple Telegram bot that connects to the OpenAI API (ChatGPT) and returns model responses directly to Telegram messages.
+Telegram bot with modular architecture (handlers / services / db / config / models).
 
-## ✨ Features
+![python](https://img.shields.io/badge/python-3.12-blue) 
+![lint](https://img.shields.io/badge/lint-black%20%7C%20isort%20%7C%20pylint-informational) 
+![types](https://img.shields.io/badge/types-mypy-informational)
 
-- `/start` — greeting message  
-- Any text message — forwarded to the OpenAI model and the reply is sent back  
-- Automatic proxy sanitization — removes unsupported SOCKS proxies from environment variables to prevent `httpx` crashes  
-- Environment-based configuration via `.env` file  
+## 🚀 Quick start
 
----
-
-## Requirements
-
-- Python 3.12+
-- A Telegram account with a created bot via @BotFather
-- An OpenAI API key from platform.openai.com
-- Redis database
-
-## 🚀 Quick Start
-
-### 1. Clone the repository
 ```bash
 git clone https://github.com/PuBepoH/ez-telegram-bot.git
 cd ez-telegram-bot
-```
-
-### 2. Create a virtual environment
-```bash
-python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-```
-
-### 3. Install dependencies
-```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 4. Set up environment variables
-```bash
 cp .env.example .env
-
-# edit .env as follow
-TELEGRAM_BOT_TOKEN=your_bot_token_from_BotFather
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o
+python bot.py
 ```
 
-### 5. Run the bot
+## ⚙️ Environment (.env)
+
+```env
+ADMIN_USER_ID="1234567890"
+TELEGRAM_BOT_TOKEN="some-telegram-token-here"
+OPENAI_API_KEY="some-openapi-api-key-here"
+OPENAI_MODEL="gpt-3.5-turbo"
+REDIS_URL="redis://localhost:6379/0"
+POSTGRES_DSN="postgresql://postgres:postgres@localhost:5432/bot"
+```
+
+## 🧱 Architecture
+
+```
+app/
+  bot.py                  # entrypoint (launcher)
+  handlers/               # Telegram command handlers: add_handler, errors, init, message_handler, reset_handler, start_handler
+  services/               # business logic: gpt_service, user_cache, telegram_app, history_service
+  db/                     # init_db, repositories (UserRepo)
+  config/                 # settings + logging
+  models/                 # dataclasses (TelegramUserData, ...)
+```
+
+Key ideas:
+- `TelegramApp` encapsulates Application creation, handler registration, error handling, DI via `application.bot_data`.
+- `UserCache` keeps in-memory Telegram users per process runtime.
+- Roles/users live in PostgreSQL (`UserRepo`).
+
+## 🛠 Dev commands
+
 ```bash
-python bot.py
+pip install -r requirements-dev.txt
+black app && isort app
+mypy app
+pylint app
+pre-commit run -a
+```
+
+## 🗃 Database
+
+- Schema: `bot`
+- Table: `bot.users` with roles and activity flags
+
+## 🤖 Bot commands
+
+- `/start` – greeting and role info
+- `/reset` – clear chat history
+- `/add <telegram_id>` – (admin-only) assign role `user`
+
+## 📦 Dependencies
+
+`requirements.txt`:
+```txt
+python-telegram-bot==20.7
+openai==1.51.0
+redis==7.0.1
+python-dotenv==1.2.1
+psycopg==3.2.12
 ```

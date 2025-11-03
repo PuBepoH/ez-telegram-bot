@@ -17,7 +17,12 @@ repos:
         additional_dependencies: 
           - types-redis
           - redis
-        args: ["--config-file", "mypy.ini"]
+        args: 
+          - --config-file
+          - mypy.ini
+          - --explicit-package-bases
+          - app
+        pass_filenames: false
 
   - repo: local
     hooks:

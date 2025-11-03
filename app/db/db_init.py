@@ -3,9 +3,7 @@ from urllib.parse import ParseResult, urlparse, urlunparse
 import psycopg
 from psycopg import errors
 
-from config import ADMIN_USER_ID, MAINTENANCE_DB_NAME, POSTGRES_DSN, logger
-
-ADMIN_USER_ID_INT = int(ADMIN_USER_ID)
+from app.config import logger, settings
 
 DB_EXISTS_CHECK_SQL = """
 SELECT 1 FROM pg_database WHERE datname = %s;
@@ -73,14 +71,14 @@ def ensure_database_exists(dsn: str, target_dbname: str | None = None) -> None:
             raise RuntimeError("Cant get DB name from POSTGRES_DSN, set target_dbname")
         target_dbname = current_dbname
 
-    if target_dbname == MAINTENANCE_DB_NAME:
+    if target_dbname == settings.maintenance_db_name:
         logger.info(
             "Target DB equals maintenance DB (%s) - skipping DB creation step",
-            MAINTENANCE_DB_NAME,
+            settings.maintenance_db_name,
         )
         return
 
-    maintenance_dsn = _replace_path_in_dsn(dsn, MAINTENANCE_DB_NAME)
+    maintenance_dsn = _replace_path_in_dsn(dsn, settings.maintenance_db_name)
     logger.info("Connecting to maintenance DB to ensure '%s' exists", target_dbname)
 
     try:
@@ -114,9 +112,9 @@ def init_db() -> None:
     Create schema/table, insert admin-user if does not exist
     """
     logger.info("Database init started")
-    ensure_database_exists(POSTGRES_DSN)
+    ensure_database_exists(settings.postgres_dsn)
 
-    with psycopg.connect(POSTGRES_DSN, autocommit=True) as conn:
+    with psycopg.connect(settings.postgres_dsn, autocommit=True) as conn:
         with conn.cursor() as cur:
 
             # healthcheck
@@ -132,7 +130,7 @@ def init_db() -> None:
             logger.info("Ensuring table bot.users exists")
             cur.execute(CREATE_USERS_SQL)
 
-            logger.info("Ensuring admin user %s exists", ADMIN_USER_ID_INT)
-            cur.execute(UPSERT_ADMIN_SQL, (ADMIN_USER_ID_INT,))
+            logger.info("Ensuring admin user %s exists", settings.admin_user_id)
+            cur.execute(UPSERT_ADMIN_SQL, (settings.admin_user_id,))
 
     logger.info("DB init completed successfully")

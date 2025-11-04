@@ -27,4 +27,4 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # By default just start bot
-CMD ["python", "bot.py"]
+CMD ["python", "-m", "app.bot"]

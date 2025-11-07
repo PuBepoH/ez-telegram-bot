@@ -28,7 +28,7 @@ services:
       - "6379:6379"   # опционально
 
   bot:
-    image: pubepoh/ez-telegram-bot:0.1
+    image: pubepoh/ez-telegram-bot:0.2
     container_name: ezbot-app
     # Подставляем настройки из .env
     env_file: .env
